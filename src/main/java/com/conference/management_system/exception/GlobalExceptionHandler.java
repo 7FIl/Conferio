@@ -1,6 +1,7 @@
 package com.conference.management_system.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
     
     @ExceptionHandler(RuntimeException.class)
@@ -21,11 +23,24 @@ public class GlobalExceptionHandler {
             RuntimeException ex,
             HttpServletRequest request) {
         
+        // Log full details internally for debugging
+        log.error("RuntimeException occurred at {}", request.getRequestURI(), ex);
+        
+        // Return generic message to user to avoid information leakage
+        String userMessage = "An unexpected error occurred. Please try again later.";
+        if (ex.getMessage() != null && 
+            (ex.getMessage().contains("Already registered") || 
+             ex.getMessage().contains("Session is full") ||
+             ex.getMessage().contains("time conflict"))) {
+            // Allow specific business logic errors
+            userMessage = ex.getMessage();
+        }
+        
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request",
-                ex.getMessage(),
+                userMessage,
                 request.getRequestURI()
         );
         
@@ -37,6 +52,9 @@ public class GlobalExceptionHandler {
             BadCredentialsException ex,
             HttpServletRequest request) {
         
+        log.warn("BadCredentialsException at {}", request.getRequestURI());
+        
+        // Always return generic message for security reasons
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.UNAUTHORIZED.value(),
@@ -52,6 +70,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
+        
+        log.warn("Validation error at {}", request.getRequestURI());
         
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
@@ -75,11 +95,15 @@ public class GlobalExceptionHandler {
             Exception ex,
             HttpServletRequest request) {
         
+        // Log full stack trace internally for debugging
+        log.error("Unhandled exception occurred at {}", request.getRequestURI(), ex);
+        
+        // Never expose internal exception details to users
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                ex.getMessage(),
+                "An unexpected error occurred. Please contact support if this persists.",
                 request.getRequestURI()
         );
         

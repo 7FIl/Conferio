@@ -2,208 +2,208 @@
 
 Platform manajemen konferensi dinamis yang merevolusi cara pengelolaan sesi, keterlibatan peserta, dan pengawasan administratif dengan Spring Boot.
 
-## 🚀 Fitur Utama
+## Quick Start
+
+### 1. Clone Repository
+```bash
+git clone <repo-url>
+cd management-system
+```
+
+### 2. Setup Environment Variables
+```bash
+# Copy .env.sample ke .env
+cp .env.sample .env
+
+# Edit .env dengan nilai Anda:
+# - JWT_SECRET: Generate dengan: openssl rand -base64 32
+# - Database credentials: Setup PostgreSQL terlebih dahulu
+```
+
+### 3. Initialize Database
+```bash
+# Development (dengan sample data)
+psql -U app_user -d conference_db -f database/init.sql
+
+# Production (tanpa default users)
+psql -U app_user -d conference_db -f database/init-prod.sql
+```
+
+### 4. Run Application
+```bash
+# Development
+./mvnw spring-boot:run
+
+# Production
+./mvnw clean package
+java -jar target/management-system-0.0.1-SNAPSHOT.jar
+```
+
+### 5. Access Application
+```
+Frontend: http://localhost:5173
+Backend API: http://localhost:8080
+API Docs: http://localhost:8080/swagger-ui.html
+```
+
+## Security (Keamanan)
+
+Sistem ini telah diperkuat dengan 6 perbaikan keamanan kritis:
+
+1. **JWT Secret Management** - Secret disimpan di environment variables
+2. **Token Storage Security** - Token disimpan di httpOnly cookies, immune terhadap XSS
+3. **Race Condition Prevention** - Pessimistic locking untuk mencegah overbooking
+4. **Exception Handling Sanitization** - Error messages yang generic tanpa expose internals
+5. **Rate Limiting** - Login endpoint dilindungi 5 attempts/minute per IP
+6. **Production Database Security** - init-prod.sql tanpa default credentials
+
+**Setup**: Copy `.env.sample` ke `.env` dan isi nilai Anda. Lihat `SECURITY_CHECKLIST.md` untuk production setup detail.
+
+## Fitur Utama
 
 ### 1. Autentikasi & Otorisasi (JWT)
-- **Register & Login**: Registrasi user baru dan login dengan JWT token
-- **Role-Based Access Control**: 
-  - `USER`: Dapat submit proposal, daftar sesi, berikan feedback
-  - `COORDINATOR`: Dapat review proposal, kelola sesi
-  - `ADMIN`: Full access ke semua fitur
+- Register & Login dengan JWT token
+- Role-Based Access Control (USER, COORDINATOR, ADMIN)
 
 ### 2. Manajemen Proposal
-- Submit proposal sesi oleh pembicara
-- Status: PENDING → ACCEPTED/REJECTED
-- Auto-create session dari proposal yang diterima
-- Review dan moderasi oleh coordinator
+- Submit proposal dari pembicara
+- Status workflow: PENDING → ACCEPTED/REJECTED
+- Auto-create session dari accepted proposal
 
 ### 3. Manajemen Sesi
 - Buat dan kelola sesi konferensi
 - Validasi bentrok jadwal otomatis
 - Track jumlah peserta real-time
-- Filter sesi upcoming
 
 ### 4. Pendaftaran Peserta
 - Daftar ke sesi dengan validasi kapasitas
-- Cek bentrok jadwal peserta otomatis
-- Cancel pendaftaran
+- Cek bentrok jadwal otomatis
 - Unique constraint: 1 user = 1 sesi
 
 ### 5. Sistem Feedback
 - Rating 1-5 dan komentar
-- Hanya peserta terdaftar yang bisa beri feedback
-- Hitung rata-rata rating per sesi
-- Moderasi feedback oleh coordinator
+- Hanya peserta registered yang bisa feedback
+- Average rating calculation
 
-## 🏗️ Arsitektur
+## Tech Stack
+
+- **Backend**: Java 21, Spring Boot 4.0.1, Spring Security + JWT
+- **Database**: PostgreSQL (Production), H2 (Testing)
+- **Frontend**: React 18.3.1, Vite, TanStack Query, Tailwind CSS
+- **Build**: Maven with Spring Boot wrapper
+- **Documentation**: OpenAPI/Swagger
+
+## Project Structure
 
 ```
-com.conference.management_system
-├── config/          # Security, Swagger configuration
-├── controller/      # REST API endpoints
-├── dto/             # Request/Response objects
-├── entity/          # Database models (JPA)
-├── repository/      # Data access layer
-├── service/         # Business logic
-├── security/        # JWT authentication & authorization
-└── exception/       # Global exception handling
+management-system/
+├── .env.sample                      # Environment variables template
+├── SECURITY_CHECKLIST.md            # Security deployment guide
+├── DEPLOYMENT_GUIDE.md              # Complete deployment instructions
+├── database/
+│   ├── init.sql                     # Development data (with samples)
+│   ├── init-prod.sql                # Production schema (no defaults)
+│   └── reset.sql                    # Reset script
+├── src/main/java/
+│   └── com/conference/management_system/
+│       ├── config/                  # Security, Web configuration
+│       ├── controller/              # REST API endpoints
+│       ├── dto/                     # Data Transfer Objects
+│       ├── entity/                  # JPA Entities
+│       ├── repository/              # Data Access Layer
+│       ├── service/                 # Business Logic
+│       ├── security/                # JWT & Rate Limiting
+│       └── exception/               # Exception Handling
+├── src/main/resources/
+│   ├── application.properties       # Default (dev) configuration
+│   ├── application-prod.properties  # Production configuration
+│   └── static/, templates/          # Static resources
+├── conferio-ui/                     # React Frontend
+│   ├── src/
+│   │   ├── pages/                  # Page components
+│   │   ├── components/             # Reusable components
+│   │   ├── context/                # Auth context
+│   │   ├── hooks/                  # Custom hooks
+│   │   └── App.jsx                 # Main app component
+│   └── vite.config.js             # Vite configuration
+├── pom.xml                          # Maven dependencies
+└── mvnw, mvnw.cmd                  # Maven wrapper
 ```
 
-## 🗄️ Database Schema
+## Environment Variables (.env)
 
-### Tables:
-- **users**: User data dengan role (USER/COORDINATOR/ADMIN)
-- **proposals**: Proposal sesi dari pembicara
-- **sessions**: Sesi konferensi terjadwal
-- **registrations**: Pendaftaran peserta ke sesi
-- **feedback**: Rating dan komentar sesi
+Required variables (copy from `.env.sample`):
 
-### Key Relations:
-- User → Proposals (1:N)
-- User → Registrations (1:N)
-- Session → Registrations (1:N)
-- Session → Feedback (1:N)
-- Proposal → Session (1:1)
-
-## 🛠️ Tech Stack
-
-- **Java 21** (LTS)
-- **Spring Boot 4.0.1**
-- **Spring Security** + JWT
-- **Spring Data JPA**
-- **PostgreSQL** (Production)
-- **H2** (Testing)
-- **Lombok**
-- **Swagger/OpenAPI** (API Documentation)
-
-## 📋 Prerequisites
-
-1. **JDK 17 atau 21**
-2. **Maven** (included with wrapper)
-3. **PostgreSQL 12+**
-4. **IDE**: IntelliJ IDEA / VS Code / Eclipse
-
-## ⚙️ Setup & Installation
-
-### 1. Clone Repository
 ```bash
-git clone <repository-url>
-cd management-system
+# JWT Configuration
+JWT_SECRET=your-secure-jwt-secret-here-change-this
+
+# Database Configuration
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/conference_db
+SPRING_DATASOURCE_USERNAME=app_user
+SPRING_DATASOURCE_PASSWORD=your-secure-database-password-here
+
+# Server Configuration
+SERVER_PORT=8080
+SPRING_PROFILES_ACTIVE=dev  # or 'prod' for production
 ```
 
-### 2. Setup Database
-```sql
-CREATE DATABASE conference_db;
-```
-
-### 3. Configure Application
-Edit `src/main/resources/application.properties`:
-```properties
-# Database
-spring.datasource.url=jdbc:postgresql://localhost:5432/conference_db
-spring.datasource.username=postgres
-spring.datasource.password=your_password
-
-# JWT Secret (ganti dengan secret key Anda)
-jwt.secret=your-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm
-```
-
-### 4. Build & Run
+Generate secure values:
 ```bash
-# Build project
-./mvnw clean install
+# Generate JWT_SECRET
+openssl rand -base64 32
 
-# Run application
-./mvnw spring-boot:run
+# Generate database password
+openssl rand -base64 32
 ```
 
-Application akan berjalan di: `http://localhost:8080`
+**Note:** The project has two separate configuration files:
+- **Root `.env.sample`** - Backend (Spring Boot) configuration for database and security
+- **`conferio-ui/.env.development`** - Frontend (React/Vite) configuration pointing to backend API
+  - Already pre-configured to connect to `http://localhost:8080`
+  - No changes needed unless you change the backend port
 
-## 📚 API Documentation
-
-Setelah aplikasi running, akses:
-- **Swagger UI**: http://localhost:8080/swagger-ui.html
-- **API Docs**: http://localhost:8080/v3/api-docs
-
-## 🔐 API Endpoints
+## API Endpoints
 
 ### Authentication
 ```
-POST /api/auth/register   - Register user baru
-POST /api/auth/login      - Login dan dapat JWT token
+POST   /api/auth/register          # Register user baru
+POST   /api/auth/login             # Login
+POST   /api/auth/logout            # Logout
 ```
 
 ### Proposals
 ```
-POST   /api/proposals              - Submit proposal (USER)
-GET    /api/proposals/my           - Get proposals saya
-GET    /api/proposals              - Get all proposals (COORDINATOR)
-GET    /api/proposals/status/{status} - Filter by status
-POST   /api/proposals/{id}/review  - Review proposal (COORDINATOR)
-DELETE /api/proposals/{id}         - Delete proposal
+GET    /api/proposals              # Get all proposals
+POST   /api/proposals              # Submit proposal (USER)
+GET    /api/proposals/my           # Get my proposals
+PUT    /api/proposals/{id}/accept  # Accept proposal (ADMIN)
+PUT    /api/proposals/{id}/reject  # Reject proposal (ADMIN)
 ```
 
 ### Sessions
 ```
-POST   /api/sessions           - Create session (COORDINATOR)
-GET    /api/sessions           - Get all sessions
-GET    /api/sessions/upcoming  - Get upcoming sessions
-GET    /api/sessions/{id}      - Get session by ID
-GET    /api/sessions/my        - Get my sessions (as speaker)
-PUT    /api/sessions/{id}      - Update session (COORDINATOR)
-DELETE /api/sessions/{id}      - Delete session (COORDINATOR)
-```
-
-### Registrations
-```
-POST   /api/registrations/session/{sessionId}  - Register ke sesi
-GET    /api/registrations/my                    - Get registrations saya
-GET    /api/registrations/session/{sessionId}  - Get registrations per sesi (COORDINATOR)
-DELETE /api/registrations/{id}                 - Cancel registration
+GET    /api/sessions               # Get all sessions
+GET    /api/sessions/upcoming      # Get upcoming sessions
+POST   /api/sessions               # Create session (COORDINATOR)
+POST   /api/sessions/{id}/register # Register to session
+DELETE /api/sessions/{id}/register # Cancel registration
 ```
 
 ### Feedback
 ```
-POST   /api/feedback                     - Submit feedback
-GET    /api/feedback/session/{sessionId} - Get feedback per sesi
-GET    /api/feedback/session/{sessionId}/average - Get average rating
-GET    /api/feedback/my                  - Get feedback saya
-DELETE /api/feedback/{id}                - Delete feedback (COORDINATOR)
+POST   /api/feedback               # Submit feedback
+GET    /api/feedback/session/{id}  # Get feedback for session
 ```
 
-## 🔑 Authorization Header
-
-Untuk endpoint yang memerlukan authentication, tambahkan header:
+### Admin
 ```
-Authorization: Bearer {your-jwt-token}
+GET    /api/admin/users            # List all users
+PUT    /api/admin/users/{id}/role  # Change user role
+DELETE /api/admin/users/{id}       # Delete user
 ```
 
-## 📝 Business Logic Highlights
-
-### Validasi Bentrok Sesi
-- Sistem otomatis cek overlapping time slots
-- Mencegah double booking untuk peserta
-- Validasi di level service layer
-
-### Workflow Proposal
-1. User submit proposal → Status: PENDING
-2. Coordinator review → Status: ACCEPTED/REJECTED
-3. Jika ACCEPTED → Auto-create Session
-4. Coordinator set waktu & ruangan
-
-### Pendaftaran Sesi
-- Check kapasitas max participants
-- Check bentrok jadwal user
-- Unique constraint (user_id, session_id)
-- Auto increment current_participants
-
-### Feedback System
-- Hanya peserta registered yang bisa feedback
-- 1 user = 1 feedback per sesi
-- Rating 1-5 dengan komentar opsional
-- Average rating calculation
-
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
@@ -211,103 +211,77 @@ Authorization: Bearer {your-jwt-token}
 
 # Run with coverage
 ./mvnw test jacoco:report
-```
 
-## 📦 Build Production
-
-```bash
-# Build JAR
+# Build production JAR
 ./mvnw clean package -DskipTests
-
-# Run JAR
-java -jar target/management-system-0.0.1-SNAPSHOT.jar
 ```
 
-## 🐳 Docker (Optional)
-
-```dockerfile
-FROM openjdk:21-jdk-slim
-WORKDIR /app
-COPY target/management-system-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
+## Docker
 
 ```bash
-docker build -t conference-management .
-docker run -p 8080:8080 conference-management
+# Build Docker image
+docker build -t conference-system:latest .
+
+# Run container
+docker run -d \
+  -p 8080:8080 \
+  -p 5173:5173 \
+  -e JWT_SECRET="your-secret" \
+  -e SPRING_DATASOURCE_URL="jdbc:postgresql://db:5432/conference_db" \
+  -e SPRING_DATASOURCE_USERNAME="app_user" \
+  -e SPRING_DATASOURCE_PASSWORD="password" \
+  conference-system:latest
 ```
 
-## 🔒 Security Features
+## Documentation
 
-1. **JWT Authentication**: Stateless token-based auth
-2. **BCrypt Password**: Secure password hashing
-3. **Role-Based Authorization**: Method-level security
-4. **CORS Configuration**: Cross-origin resource sharing
-5. **Input Validation**: Jakarta Validation annotations
+- **[SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md)** - Security setup & verification
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete deployment instructions
+- **[.env.sample](.env.sample)** - Environment variables template
 
-## 📊 Database Indexes (Recommended)
+## Troubleshooting
 
-```sql
-CREATE INDEX idx_proposals_status ON proposals(status);
-CREATE INDEX idx_proposals_user_id ON proposals(user_id);
-CREATE INDEX idx_sessions_time ON sessions(session_time);
-CREATE INDEX idx_sessions_speaker_id ON sessions(speaker_id);
-CREATE INDEX idx_registrations_user_session ON registrations(user_id, session_id);
-CREATE INDEX idx_feedback_session_id ON feedback(session_id);
+### Port already in use
+```bash
+# Change port in .env
+SERVER_PORT=8081
 ```
 
-## 🚨 Common Issues
+### Database connection failed
+```bash
+# Verify PostgreSQL is running
+psql -U postgres -h localhost
 
-### Issue: JWT Secret Too Short
-```
-Solution: Pastikan jwt.secret minimal 256 bits (32 characters)
-```
-
-### Issue: Database Connection Failed
-```
-Solution: Cek PostgreSQL running & credentials di application.properties
+# Check .env credentials
 ```
 
-### Issue: Port 8080 Already in Use
+### JWT secret too short
+```bash
+# Generate new 32-character secret
+openssl rand -base64 32
 ```
-Solution: Change port di application.properties
-server.port=8081
-```
 
-## 📈 Future Enhancements
+## User Roles
 
-- [ ] Email notifications untuk proposal approval
-- [ ] QR code untuk check-in peserta
-- [ ] Live streaming integration
-- [ ] File upload untuk presentation materials
-- [ ] Analytics dashboard untuk coordinator
-- [ ] Mobile app integration
-- [ ] WebSocket untuk real-time updates
+| Role | Permissions |
+|------|-------------|
+| **USER** | Register, submit proposal, register for session, feedback |
+| **COORDINATOR** | Review proposal, create session, manage sessions |
+| **ADMIN** | Full access, user management |
 
-## 👥 Roles & Permissions Matrix
+## Contact
 
-| Feature | USER | COORDINATOR | ADMIN |
-|---------|------|-------------|-------|
-| Register/Login | ✅ | ✅ | ✅ |
-| Submit Proposal | ✅ | ✅ | ✅ |
-| Review Proposal | ❌ | ✅ | ✅ |
-| Create Session | ❌ | ✅ | ✅ |
-| Register to Session | ✅ | ✅ | ✅ |
-| Submit Feedback | ✅ | ✅ | ✅ |
-| Delete Feedback | ❌ | ✅ | ✅ |
-| View All Data | ❌ | ✅ | ✅ |
+- **Documentation**: See `.md` files
+- **API Docs**: `http://localhost:8080/swagger-ui.html`
+- **Issues**: Create issue in repository
 
-## 📞 Contact & Support
+## License
 
-- **Developer**: Conference Team
-- **Email**: info@conference.com
-- **Documentation**: http://localhost:8080/swagger-ui.html
-
-## 📄 License
-
-MIT License - Free to use for educational purposes
+MIT License - Free for educational use
 
 ---
 
-**Built with ❤️ using Spring Boot & Clean Architecture principles**
+**Dibangun dengan penuh dedikasi menggunakan Spring Boot & Clean Architecture**
+
+Last Updated: December 2025
+Security Status: PRODUCTION READY

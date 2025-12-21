@@ -41,17 +41,18 @@ public class RegistrationService {
             throw new RuntimeException("Already registered for this session");
         }
         
-        // Get session
-        Session session = sessionRepository.findById(sessionId)
+        // Get session with PESSIMISTIC_WRITE lock to prevent race condition
+        // This ensures only one thread can modify participant count at a time
+        Session session = sessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> {
                     log.error("Session not found: sessionId={}", sessionId);
                     return new RuntimeException("Session not found");
                 });
-        log.info("Session found: id={}, title={}, current={}/{}", 
+        log.info("Session found and locked: id={}, title={}, current={}/{}", 
                 session.getId(), session.getTitle(), 
                 session.getCurrentParticipants(), session.getMaxParticipants());
         
-        // Check if session is full
+        // Check if session is full - this check is now atomic with the increment
         if (session.getCurrentParticipants() >= session.getMaxParticipants()) {
             log.warn("Session is full: sessionId={}", sessionId);
             throw new RuntimeException("Session is full");
