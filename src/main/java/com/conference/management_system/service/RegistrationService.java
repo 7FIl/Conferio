@@ -1,5 +1,14 @@
 package com.conference.management_system.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.conference.management_system.dto.RegistrationResponse;
 import com.conference.management_system.entity.Registration;
 import com.conference.management_system.entity.Session;
@@ -7,18 +16,13 @@ import com.conference.management_system.entity.User;
 import com.conference.management_system.repository.RegistrationRepository;
 import com.conference.management_system.repository.SessionRepository;
 import com.conference.management_system.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RegistrationService {
     
     private final RegistrationRepository registrationRepository;
@@ -27,19 +31,29 @@ public class RegistrationService {
     
     @Transactional
     public RegistrationResponse registerForSession(Long sessionId) {
+        log.info("Register for session attempt: sessionId={}", sessionId);
         User currentUser = getCurrentUser();
+        log.info("Current user: id={}, username={}", currentUser.getId(), currentUser.getUsername());
         
         // Check if already registered
         if (registrationRepository.existsByUserIdAndSessionId(currentUser.getId(), sessionId)) {
+            log.warn("User already registered for session: userId={}, sessionId={}", currentUser.getId(), sessionId);
             throw new RuntimeException("Already registered for this session");
         }
         
         // Get session
         Session session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+                .orElseThrow(() -> {
+                    log.error("Session not found: sessionId={}", sessionId);
+                    return new RuntimeException("Session not found");
+                });
+        log.info("Session found: id={}, title={}, current={}/{}", 
+                session.getId(), session.getTitle(), 
+                session.getCurrentParticipants(), session.getMaxParticipants());
         
         // Check if session is full
         if (session.getCurrentParticipants() >= session.getMaxParticipants()) {
+            log.warn("Session is full: sessionId={}", sessionId);
             throw new RuntimeException("Session is full");
         }
         
@@ -52,6 +66,7 @@ public class RegistrationService {
         );
         
         if (!conflicts.isEmpty()) {
+            log.warn("Time conflict detected: userId={}, sessionId={}", currentUser.getId(), sessionId);
             throw new RuntimeException("You have another session at this time");
         }
         
@@ -62,10 +77,14 @@ public class RegistrationService {
         registration.setStatus(Registration.RegistrationStatus.CONFIRMED);
         
         Registration saved = registrationRepository.save(registration);
+        log.info("Registration created: id={}, userId={}, sessionId={}", 
+                saved.getId(), currentUser.getId(), sessionId);
         
         // Increment participant count
         session.setCurrentParticipants(session.getCurrentParticipants() + 1);
         sessionRepository.save(session);
+        log.info("Session participants updated: sessionId={}, newCount={}", 
+                sessionId, session.getCurrentParticipants());
         
         return mapToResponse(saved);
     }
@@ -110,8 +129,12 @@ public class RegistrationService {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
+        log.debug("getCurrentUser: username={}, principal={}", username, authentication.getPrincipal());
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> {
+                    log.error("User not found in database: username={}", username);
+                    return new RuntimeException("User not found");
+                });
     }
     
     private RegistrationResponse mapToResponse(Registration registration) {

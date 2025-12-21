@@ -33,7 +33,7 @@ build/
 .vscode/
 
 ### Environment & Configuration (SENSITIVE DATA) ###
-# Exclude production properties dengan credentials
+# Exclude production properties with credentials
 src/main/resources/application.properties
 src/main/resources/application-prod.properties
 src/main/resources/application-dev.properties
@@ -63,3 +63,10 @@ logs/
 ### Windows ###
 Thumbs.db
 ehthumbs.db
+
+### Frontend (node_modules, dist build) ###
+conferio-ui/node_modules/
+conferio-ui/dist/
+conferio-ui/.env
+conferio-ui/.env.local
+conferio-ui/.env.*.local

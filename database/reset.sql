@@ -1,23 +1,29 @@
--- ============================================
--- Conference Management System Database Setup
--- ============================================
+-- Terminate all connections to the database (except the one executing this command)
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity 
+WHERE datname = 'conference_db' AND pid != pg_backend_pid();
 
--- Create Database
+-- Wait a moment for connections to close
+SELECT pg_sleep(1);
+
+-- Drop existing database
+DROP DATABASE IF EXISTS conference_db;
+
+-- Create fresh database  
 CREATE DATABASE conference_db;
 
--- Connect to database
+-- Connect to the new database
 \c conference_db;
 
 -- Create Users Table
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
-    username VARCHAR(255) NOT NULL UNIQUE,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    full_name VARCHAR(255),
+    full_name VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    CHECK (role IN ('ADMIN', 'COORDINATOR', 'USER'))
 );
 
 -- Create Proposals Table
@@ -25,7 +31,7 @@ CREATE TABLE proposals (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     title VARCHAR(255) NOT NULL,
-    description TEXT,
+    description TEXT NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reviewed_at TIMESTAMP,
@@ -88,15 +94,16 @@ CREATE INDEX idx_registrations_session_id ON registrations(session_id);
 CREATE INDEX idx_feedback_session_id ON feedback(session_id);
 CREATE INDEX idx_feedback_user_id ON feedback(user_id);
 
--- Insert Sample Data (Optional)
+-- Insert Sample Data
 
 -- Sample Users (password: "password123" - hashed with BCrypt)
+-- Hash: $2a$10$slYQmyNdGzin7olVN3p5be4DlH.PKZbv5H8KnzzVgXXbVxzy73T5m
 INSERT INTO users (username, email, password, full_name, role) VALUES
-('admin', 'admin@conference.com', '$2a$10$Vn5A.kCanhzMRbMsl7G.ze2bIu3rv2fKAvdy1X0pl01HoTDSekIhK', 'Admin User', 'ADMIN'),
-('coordinator1', 'coordinator@conference.com', '$2a$10$Vn5A.kCanhzMRbMsl7G.ze2bIu3rv2fKAvdy1X0pl01HoTDSekIhK', 'John Coordinator', 'COORDINATOR'),
-('speaker1', 'speaker1@conference.com', '$2a$10$Vn5A.kCanhzMRbMsl7G.ze2bIu3rv2fKAvdy1X0pl01HoTDSekIhK', 'Jane Speaker', 'USER'),
-('speaker2', 'speaker2@conference.com', '$2a$10$Vn5A.kCanhzMRbMsl7G.ze2bIu3rv2fKAvdy1X0pl01HoTDSekIhK', 'Bob Smith', 'USER'),
-('participant1', 'participant1@conference.com', '$2a$10$Vn5A.kCanhzMRbMsl7G.ze2bIu3rv2fKAvdy1X0pl01HoTDSekIhK', 'Alice Participant', 'USER');
+('admin', 'admin@conference.com', '$2a$10$slYQmyNdGzin7olVN3p5be4DlH.PKZbv5H8KnzzVgXXbVxzy73T5m', 'Admin User', 'ADMIN'),
+('coordinator1', 'coordinator@conference.com', '$2a$10$slYQmyNdGzin7olVN3p5be4DlH.PKZbv5H8KnzzVgXXbVxzy73T5m', 'John Coordinator', 'COORDINATOR'),
+('speaker1', 'speaker1@conference.com', '$2a$10$slYQmyNdGzin7olVN3p5be4DlH.PKZbv5H8KnzzVgXXbVxzy73T5m', 'Jane Speaker', 'USER'),
+('speaker2', 'speaker2@conference.com', '$2a$10$slYQmyNdGzin7olVN3p5be4DlH.PKZbv5H8KnzzVgXXbVxzy73T5m', 'Bob Smith', 'USER'),
+('participant1', 'participant1@conference.com', '$2a$10$slYQmyNdGzin7olVN3p5be4DlH.PKZbv5H8KnzzVgXXbVxzy73T5m', 'Alice Participant', 'USER');
 
 -- Sample Proposals
 INSERT INTO proposals (user_id, title, description, status, submitted_at) VALUES
@@ -118,12 +125,5 @@ INSERT INTO registrations (user_id, session_id, status) VALUES
 UPDATE sessions SET current_participants = 1 WHERE id = 1;
 UPDATE sessions SET current_participants = 1 WHERE id = 2;
 
--- Grant permissions
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO postgres;
-
--- Display table info
-\dt
-
 -- Success message
-SELECT 'Database setup completed successfully!' AS status;
+SELECT 'Database reset completed successfully!' AS status;

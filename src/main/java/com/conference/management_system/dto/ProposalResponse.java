@@ -15,6 +15,7 @@ public class ProposalResponse {
     private Long id;
     private Long userId;
     private String username;
+    private String submitterName;  // For UI display - who made the proposal
     private String title;
     private String description;
     private Proposal.ProposalStatus status;

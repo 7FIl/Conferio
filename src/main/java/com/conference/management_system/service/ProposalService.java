@@ -1,23 +1,23 @@
 package com.conference.management_system.service;
 
-import com.conference.management_system.dto.ProposalRequest;
-import com.conference.management_system.dto.ProposalResponse;
-import com.conference.management_system.dto.ProposalReviewRequest;
-import com.conference.management_system.entity.Proposal;
-import com.conference.management_system.entity.Session;
-import com.conference.management_system.entity.User;
-import com.conference.management_system.repository.ProposalRepository;
-import com.conference.management_system.repository.SessionRepository;
-import com.conference.management_system.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.conference.management_system.dto.ProposalRequest;
+import com.conference.management_system.dto.ProposalResponse;
+import com.conference.management_system.dto.ProposalReviewRequest;
+import com.conference.management_system.entity.Proposal;
+import com.conference.management_system.entity.User;
+import com.conference.management_system.repository.ProposalRepository;
+import com.conference.management_system.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +25,6 @@ public class ProposalService {
     
     private final ProposalRepository proposalRepository;
     private final UserRepository userRepository;
-    private final SessionRepository sessionRepository;
     
     @Transactional
     public ProposalResponse createProposal(ProposalRequest request) {
@@ -79,25 +78,11 @@ public class ProposalService {
         
         if (newStatus == Proposal.ProposalStatus.REJECTED) {
             proposal.setRejectionReason(request.getRejectionReason());
-        } else if (newStatus == Proposal.ProposalStatus.ACCEPTED) {
-            // Auto-create session from accepted proposal
-            createSessionFromProposal(proposal);
         }
+        // Note: Session creation is now done separately by coordinators
         
         Proposal updated = proposalRepository.save(proposal);
         return mapToResponse(updated);
-    }
-    
-    private void createSessionFromProposal(Proposal proposal) {
-        Session session = new Session();
-        session.setProposal(proposal);
-        session.setSpeaker(proposal.getUser());
-        session.setTitle(proposal.getTitle());
-        session.setDescription(proposal.getDescription());
-        session.setStatus(Session.SessionStatus.SCHEDULED);
-        // Session time and room should be set by coordinator later
-        
-        sessionRepository.save(session);
     }
     
     @Transactional
@@ -129,6 +114,7 @@ public class ProposalService {
         response.setId(proposal.getId());
         response.setUserId(proposal.getUser().getId());
         response.setUsername(proposal.getUser().getUsername());
+        response.setSubmitterName(proposal.getUser().getUsername());  // Set submitterName for UI
         response.setTitle(proposal.getTitle());
         response.setDescription(proposal.getDescription());
         response.setStatus(proposal.getStatus());
