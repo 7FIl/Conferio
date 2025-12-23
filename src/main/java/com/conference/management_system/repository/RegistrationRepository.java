@@ -18,10 +18,10 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     Optional<Registration> findByUserIdAndSessionId(Long userId, Long sessionId);
     boolean existsByUserIdAndSessionId(Long userId, Long sessionId);
     
-    @Query("SELECT r FROM Registration r JOIN r.session s WHERE r.user.id = :userId " +
-           "AND s.sessionTime < :endTime " +
-           "AND FUNCTION('TIMESTAMPADD', MINUTE, s.durationMinutes, s.sessionTime) > :startTime " +
-           "AND r.status = 'CONFIRMED'")
+    @Query(value = "SELECT r.* FROM registrations r JOIN sessions s ON r.session_id = s.id " +
+           "WHERE r.user_id = :userId AND s.session_time < :endTime " +
+           "AND (s.session_time + (s.duration_minutes || ' minutes')::INTERVAL) > :startTime " +
+           "AND r.status = 'CONFIRMED'", nativeQuery = true)
     List<Registration> findUserRegistrationConflicts(
             @Param("userId") Long userId,
             @Param("startTime") LocalDateTime startTime,

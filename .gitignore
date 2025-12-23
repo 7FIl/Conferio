@@ -64,9 +64,4 @@ logs/
 Thumbs.db
 ehthumbs.db
 
-### Frontend (node_modules, dist build) ###
-conferio-ui/node_modules/
-conferio-ui/dist/
-conferio-ui/.env
-conferio-ui/.env.local
-conferio-ui/.env.*.local
+

@@ -13,6 +13,7 @@ import com.conference.management_system.dto.RegistrationResponse;
 import com.conference.management_system.entity.Registration;
 import com.conference.management_system.entity.Session;
 import com.conference.management_system.entity.User;
+import com.conference.management_system.exception.ApiException;
 import com.conference.management_system.repository.RegistrationRepository;
 import com.conference.management_system.repository.SessionRepository;
 import com.conference.management_system.repository.UserRepository;
@@ -38,7 +39,7 @@ public class RegistrationService {
         // Check if already registered
         if (registrationRepository.existsByUserIdAndSessionId(currentUser.getId(), sessionId)) {
             log.warn("User already registered for session: userId={}, sessionId={}", currentUser.getId(), sessionId);
-            throw new RuntimeException("Already registered for this session");
+            throw ApiException.conflict("Already registered for this session");
         }
         
         // Get session with PESSIMISTIC_WRITE lock to prevent race condition
@@ -46,7 +47,7 @@ public class RegistrationService {
         Session session = sessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> {
                     log.error("Session not found: sessionId={}", sessionId);
-                    return new RuntimeException("Session not found");
+                    return ApiException.notFound("Session not found");
                 });
         log.info("Session found and locked: id={}, title={}, current={}/{}", 
                 session.getId(), session.getTitle(), 
@@ -55,7 +56,7 @@ public class RegistrationService {
         // Check if session is full - this check is now atomic with the increment
         if (session.getCurrentParticipants() >= session.getMaxParticipants()) {
             log.warn("Session is full: sessionId={}", sessionId);
-            throw new RuntimeException("Session is full");
+            throw ApiException.badRequest("Session is full");
         }
         
         // Check for time conflicts with user's other registrations
@@ -68,7 +69,7 @@ public class RegistrationService {
         
         if (!conflicts.isEmpty()) {
             log.warn("Time conflict detected: userId={}, sessionId={}", currentUser.getId(), sessionId);
-            throw new RuntimeException("You have another session at this time");
+            throw ApiException.conflict("You have another session at this time");
         }
         
         // Create registration
@@ -106,15 +107,15 @@ public class RegistrationService {
     @Transactional
     public void cancelRegistration(Long registrationId) {
         Registration registration = registrationRepository.findById(registrationId)
-                .orElseThrow(() -> new RuntimeException("Registration not found"));
+            .orElseThrow(() -> ApiException.notFound("Registration not found"));
         
         User currentUser = getCurrentUser();
         if (!registration.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You can only cancel your own registrations");
+            throw ApiException.forbidden("You can only cancel your own registrations");
         }
         
         if (registration.getStatus() == Registration.RegistrationStatus.CANCELLED) {
-            throw new RuntimeException("Registration already cancelled");
+            throw ApiException.conflict("Registration already cancelled");
         }
         
         // Update status
@@ -134,7 +135,7 @@ public class RegistrationService {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> {
                     log.error("User not found in database: username={}", username);
-                    return new RuntimeException("User not found");
+                    return ApiException.notFound("User not found");
                 });
     }
     

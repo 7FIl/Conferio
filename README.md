@@ -1,287 +1,125 @@
-# Platform Manajemen Konferensi
+# Conference Management System
 
-Platform manajemen konferensi dinamis yang merevolusi cara pengelolaan sesi, keterlibatan peserta, dan pengawasan administratif dengan Spring Boot.
+Production-ready Spring Boot backend for running conferences: manage proposals, sessions, registrations, feedback, and administrative workflows with consistent error handling and hardened security defaults.
+
+## Requirements
+
+- Java 21 (Temurin or Corretto recommended)
+- Maven 3.9+
+- PostgreSQL 14+ (local or managed service)
+- OpenSSL (optional, for generating secrets)
 
 ## Quick Start
 
-### 1. Clone Repository
+1. Clone and enter the repository
+  ```bash
+  git clone <repo-url>
+  cd management-system
+  ```
+2. Copy environment template and set secrets
+  ```bash
+  copy .env.sample .env         # Windows
+  # or
+  cp .env.sample .env           # macOS/Linux
+  ```
+  Update `.env` with a strong `JWT_SECRET` and real database credentials (`openssl rand -base64 32`).
+3. Provision the database
+  ```bash
+  psql -U postgres -h localhost -f database/init.sql        # Dev data
+  psql -U postgres -h localhost -f database/init-prod.sql   # Prod baseline
+  ```
+4. Run the application
+  ```bash
+  .\mvnw.cmd spring-boot:run     # Windows
+  ./mvnw spring-boot:run         # macOS/Linux
+  ```
+5. Explore the API at `http://localhost:8080/swagger-ui`.
+
+## Configuration
+
+Key environment variables (see `.env.sample` for full list):
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `JWT_SECRET` | HMAC key for JWT signing | `dev-secret-key-change-in-production-immediately` |
+| `SPRING_DATASOURCE_URL` | JDBC connection string | `jdbc:postgresql://localhost:5432/conference_db` |
+| `SPRING_DATASOURCE_USERNAME` | Database user | `app_user` |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | _none_ |
+| `SERVER_PORT` | HTTP port | `8080` |
+| `SPRING_PROFILES_ACTIVE` | Active profile (`dev` or `prod`) | `dev` |
+
+- `application.properties` is tuned for local development.
+- `application-prod.properties` enforces secure cookies, disables Swagger, and expects secrets via environment variables. Activate with `SPRING_PROFILES_ACTIVE=prod`.
+- Database scripts live in `database/` (`init.sql`, `init-prod.sql`, `reset.sql`).
+
+## Security Hardening
+
+- JWT-based stateless authentication with `JwtAuthenticationFilter` and BCrypt password hashing.
+- Role-based authorization (`USER`, `COORDINATOR`, `ADMIN`) enforced via `SecurityConfig`.
+- Login endpoint protected by `RateLimitingInterceptor` (5 attempts/minute/IP using Bucket4j).
+- Centralized exception translation via `ApiException` and `GlobalExceptionHandler`; no internal details leak to clients.
+- Production profile forces HTTPS cookies (`SameSite=strict`, `httpOnly=true`) and hides Swagger UI.
+- Actuator restricted to `health` and `info` in production.
+
+## Running & Testing
+
 ```bash
-git clone <repo-url>
-cd management-system
+./mvnw verify                     # Compile, run unit tests
+./mvnw clean package -DskipTests  # Build runnable JAR
+java -jar target/management-system-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
-### 2. Setup Environment Variables
-```bash
-# Copy .env.sample ke .env
-cp .env.sample .env
+- H2 is used for tests; PostgreSQL is required at runtime.
+- Add `-Dspring-boot.run.profiles=prod` to run the wrapper with production settings.
 
-# Edit .env dengan nilai Anda:
-# - JWT_SECRET: Generate dengan: openssl rand -base64 32
-# - Database credentials: Setup PostgreSQL terlebih dahulu
-```
+## Observability & Operations
 
-### 3. Initialize Database
-```bash
-# Development (dengan sample data)
-psql -U app_user -d conference_db -f database/init.sql
+- API docs: `/swagger-ui` (disabled in prod) and `/v3/api-docs`.
+- Health checks: `/actuator/health`, `/actuator/info` (exposed via Spring Boot Actuator).
+- Structured error payloads returned on every failure (`timestamp`, `status`, `message`, `path`).
+- Application logs default to INFO for business packages; override via `logging.level.*` properties.
 
-# Production (tanpa default users)
-psql -U app_user -d conference_db -f database/init-prod.sql
-```
+## Feature Overview
 
-### 4. Run Application
-```bash
-# Development
-./mvnw spring-boot:run
-
-# Production
-./mvnw clean package
-java -jar target/management-system-0.0.1-SNAPSHOT.jar
-```
-
-### 5. Access Application
-```
-Frontend: http://localhost:5173
-Backend API: http://localhost:8080
-API Docs: http://localhost:8080/swagger-ui.html
-```
-
-## Security (Keamanan)
-
-Sistem ini telah diperkuat dengan 6 perbaikan keamanan kritis:
-
-1. **JWT Secret Management** - Secret disimpan di environment variables
-2. **Token Storage Security** - Token disimpan di httpOnly cookies, immune terhadap XSS
-3. **Race Condition Prevention** - Pessimistic locking untuk mencegah overbooking
-4. **Exception Handling Sanitization** - Error messages yang generic tanpa expose internals
-5. **Rate Limiting** - Login endpoint dilindungi 5 attempts/minute per IP
-6. **Production Database Security** - init-prod.sql tanpa default credentials
-
-**Setup**: Copy `.env.sample` ke `.env` dan isi nilai Anda. Lihat `SECURITY_CHECKLIST.md` untuk production setup detail.
-
-## Fitur Utama
-
-### 1. Autentikasi & Otorisasi (JWT)
-- Register & Login dengan JWT token
-- Role-Based Access Control (USER, COORDINATOR, ADMIN)
-
-### 2. Manajemen Proposal
-- Submit proposal dari pembicara
-- Status workflow: PENDING → ACCEPTED/REJECTED
-- Auto-create session dari accepted proposal
-
-### 3. Manajemen Sesi
-- Buat dan kelola sesi konferensi
-- Validasi bentrok jadwal otomatis
-- Track jumlah peserta real-time
-
-### 4. Pendaftaran Peserta
-- Daftar ke sesi dengan validasi kapasitas
-- Cek bentrok jadwal otomatis
-- Unique constraint: 1 user = 1 sesi
-
-### 5. Sistem Feedback
-- Rating 1-5 dan komentar
-- Hanya peserta registered yang bisa feedback
-- Average rating calculation
-
-## Tech Stack
-
-- **Backend**: Java 21, Spring Boot 4.0.1, Spring Security + JWT
-- **Database**: PostgreSQL (Production), H2 (Testing)
-- **Frontend**: React 18.3.1, Vite, TanStack Query, Tailwind CSS
-- **Build**: Maven with Spring Boot wrapper
-- **Documentation**: OpenAPI/Swagger
+- **Proposals**: submit, review (accept/reject), audit reviewer metadata.
+- **Sessions**: schedule accepted proposals with conflict detection and capacity limits.
+- **Registrations**: pessimistic locking avoids overbooking; conflict checks prevent schedule overlaps.
+- **Feedback**: authenticated attendees provide ratings/comments; average rating endpoint included.
+- **Administration**: manage users and roles with safeguards against removing the last administrator.
 
 ## Project Structure
 
 ```
-management-system/
-├── .env.sample                      # Environment variables template
-├── SECURITY_CHECKLIST.md            # Security deployment guide
-├── DEPLOYMENT_GUIDE.md              # Complete deployment instructions
-├── database/
-│   ├── init.sql                     # Development data (with samples)
-│   ├── init-prod.sql                # Production schema (no defaults)
-│   └── reset.sql                    # Reset script
-├── src/main/java/
-│   └── com/conference/management_system/
-│       ├── config/                  # Security, Web configuration
-│       ├── controller/              # REST API endpoints
-│       ├── dto/                     # Data Transfer Objects
-│       ├── entity/                  # JPA Entities
-│       ├── repository/              # Data Access Layer
-│       ├── service/                 # Business Logic
-│       ├── security/                # JWT & Rate Limiting
-│       └── exception/               # Exception Handling
-├── src/main/resources/
-│   ├── application.properties       # Default (dev) configuration
-│   ├── application-prod.properties  # Production configuration
-│   └── static/, templates/          # Static resources
-├── conferio-ui/                     # React Frontend
-│   ├── src/
-│   │   ├── pages/                  # Page components
-│   │   ├── components/             # Reusable components
-│   │   ├── context/                # Auth context
-│   │   ├── hooks/                  # Custom hooks
-│   │   └── App.jsx                 # Main app component
-│   └── vite.config.js             # Vite configuration
-├── pom.xml                          # Maven dependencies
-└── mvnw, mvnw.cmd                  # Maven wrapper
+src/main/java/com/conference/management_system
+├── config/        # Security, Swagger, and web interceptors
+├── controller/    # REST endpoints
+├── dto/           # Request/response payloads
+├── entity/        # JPA entities
+├── exception/     # ApiException + global handler
+├── repository/    # Spring Data repositories
+├── security/      # JWT utilities and rate limiting
+└── service/       # Transactional domain logic
+
+src/main/resources
+├── application.properties
+├── application-prod.properties
+└── static/swagger-custom.css
 ```
 
-## Environment Variables (.env)
+## Additional Resources
 
-Required variables (copy from `.env.sample`):
+- Deployment checklist: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
+- Troubleshooting and FAQs: [HELP.md](HELP.md)
+- API testing dashboard notes: [API_TESTING_DASHBOARD_GUIDE.md](API_TESTING_DASHBOARD_GUIDE.md)
 
-```bash
-# JWT Configuration
-JWT_SECRET=your-secure-jwt-secret-here-change-this
+## Production Checklist
 
-# Database Configuration
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/conference_db
-SPRING_DATASOURCE_USERNAME=app_user
-SPRING_DATASOURCE_PASSWORD=your-secure-database-password-here
-
-# Server Configuration
-SERVER_PORT=8080
-SPRING_PROFILES_ACTIVE=dev  # or 'prod' for production
-```
-
-Generate secure values:
-```bash
-# Generate JWT_SECRET
-openssl rand -base64 32
-
-# Generate database password
-openssl rand -base64 32
-```
-
-**Note:** The project has two separate configuration files:
-- **Root `.env.sample`** - Backend (Spring Boot) configuration for database and security
-- **`conferio-ui/.env.development`** - Frontend (React/Vite) configuration pointing to backend API
-  - Already pre-configured to connect to `http://localhost:8080`
-  - No changes needed unless you change the backend port
-
-## API Endpoints
-
-### Authentication
-```
-POST   /api/auth/register          # Register user baru
-POST   /api/auth/login             # Login
-POST   /api/auth/logout            # Logout
-```
-
-### Proposals
-```
-GET    /api/proposals              # Get all proposals
-POST   /api/proposals              # Submit proposal (USER)
-GET    /api/proposals/my           # Get my proposals
-PUT    /api/proposals/{id}/accept  # Accept proposal (ADMIN)
-PUT    /api/proposals/{id}/reject  # Reject proposal (ADMIN)
-```
-
-### Sessions
-```
-GET    /api/sessions               # Get all sessions
-GET    /api/sessions/upcoming      # Get upcoming sessions
-POST   /api/sessions               # Create session (COORDINATOR)
-POST   /api/sessions/{id}/register # Register to session
-DELETE /api/sessions/{id}/register # Cancel registration
-```
-
-### Feedback
-```
-POST   /api/feedback               # Submit feedback
-GET    /api/feedback/session/{id}  # Get feedback for session
-```
-
-### Admin
-```
-GET    /api/admin/users            # List all users
-PUT    /api/admin/users/{id}/role  # Change user role
-DELETE /api/admin/users/{id}       # Delete user
-```
-
-## Testing
-
-```bash
-# Run all tests
-./mvnw test
-
-# Run with coverage
-./mvnw test jacoco:report
-
-# Build production JAR
-./mvnw clean package -DskipTests
-```
-
-## Docker
-
-```bash
-# Build Docker image
-docker build -t conference-system:latest .
-
-# Run container
-docker run -d \
-  -p 8080:8080 \
-  -p 5173:5173 \
-  -e JWT_SECRET="your-secret" \
-  -e SPRING_DATASOURCE_URL="jdbc:postgresql://db:5432/conference_db" \
-  -e SPRING_DATASOURCE_USERNAME="app_user" \
-  -e SPRING_DATASOURCE_PASSWORD="password" \
-  conference-system:latest
-```
-
-## Documentation
-
-- **[SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md)** - Security setup & verification
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete deployment instructions
-- **[.env.sample](.env.sample)** - Environment variables template
-
-## Troubleshooting
-
-### Port already in use
-```bash
-# Change port in .env
-SERVER_PORT=8081
-```
-
-### Database connection failed
-```bash
-# Verify PostgreSQL is running
-psql -U postgres -h localhost
-
-# Check .env credentials
-```
-
-### JWT secret too short
-```bash
-# Generate new 32-character secret
-openssl rand -base64 32
-```
-
-## User Roles
-
-| Role | Permissions |
-|------|-------------|
-| **USER** | Register, submit proposal, register for session, feedback |
-| **COORDINATOR** | Review proposal, create session, manage sessions |
-| **ADMIN** | Full access, user management |
-
-## Contact
-
-- **Documentation**: See `.md` files
-- **API Docs**: `http://localhost:8080/swagger-ui.html`
-- **Issues**: Create issue in repository
-
-## License
-
-MIT License - Free for educational use
+- [ ] Set strong values in `.env` or platform secrets store (JWT, database credentials).
+- [ ] Run `database/init-prod.sql` against the production database.
+- [ ] Enable HTTPS and forward `X-Forwarded-*` headers when deploying behind a proxy.
+- [ ] Keep at least two administrator accounts active.
+- [ ] Monitor login throttling via server logs for suspicious activity.
 
 ---
 
-**Dibangun dengan penuh dedikasi menggunakan Spring Boot & Clean Architecture**
-
-Last Updated: December 2025
-Security Status: PRODUCTION READY
+Built with Spring Boot 4, Java 21, and a focus on predictable, observable APIs.

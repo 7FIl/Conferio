@@ -3,6 +3,8 @@ package com.conference.management_system.service;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.conference.management_system.dto.AuthResponse;
 import com.conference.management_system.dto.LoginRequest;
 import com.conference.management_system.dto.RegisterRequest;
+import com.conference.management_system.dto.UserResponse;
 import com.conference.management_system.entity.User;
+import com.conference.management_system.exception.ApiException;
 import com.conference.management_system.repository.UserRepository;
 import com.conference.management_system.security.JwtUtil;
 
@@ -33,11 +37,11 @@ public class AuthService {
         // Validasi username dan email sudah terdaftar
         if (userRepository.existsByUsername(request.getUsername())) {
             log.error("Username already exists: {}", request.getUsername());
-            throw new RuntimeException("Username already exists");
+            throw ApiException.conflict("Username already exists");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
             log.error("Email already exists: {}", request.getEmail());
-            throw new RuntimeException("Email already exists");
+            throw ApiException.conflict("Email already exists");
         }
         
         // Buat user baru
@@ -76,8 +80,8 @@ public class AuthService {
             log.info("Authentication successful for user: {}", request.getUsername());
             
             // Get user details
-            User user = userRepository.findByUsername(request.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                User user = userRepository.findByUsername(request.getUsername())
+                    .orElseThrow(() -> ApiException.notFound("User not found"));
             
             // Generate JWT token
             String token = jwtUtil.generateToken(user);
@@ -93,10 +97,30 @@ public class AuthService {
         } catch (BadCredentialsException e) {
             log.error("Invalid credentials for user: {}", request.getUsername());
             throw new BadCredentialsException("Invalid username or password");
+        } catch (ApiException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Login failed for user: {}", request.getUsername(), e);
-            throw e;
+            throw ApiException.internalServerError("Login failed. Please try again.");
         }
+    }
+
+    /**
+     * Return the currently authenticated user profile.
+     * Throws RuntimeException to be handled by global exception handler if unauthenticated.
+     */
+    public UserResponse currentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            log.warn("currentUser called without authentication");
+            throw ApiException.unauthorized("User not authenticated");
+        }
+
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> ApiException.notFound("User not found"));
+
+        return UserResponse.fromUser(user);
     }
 }
 

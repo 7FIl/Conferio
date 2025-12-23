@@ -6,6 +6,7 @@ import com.conference.management_system.entity.Feedback;
 import com.conference.management_system.entity.Registration;
 import com.conference.management_system.entity.Session;
 import com.conference.management_system.entity.User;
+import com.conference.management_system.exception.ApiException;
 import com.conference.management_system.repository.FeedbackRepository;
 import com.conference.management_system.repository.RegistrationRepository;
 import com.conference.management_system.repository.SessionRepository;
@@ -37,19 +38,19 @@ public class FeedbackService {
         Optional<Feedback> existing = feedbackRepository.findByUserIdAndSessionId(
                 currentUser.getId(), request.getSessionId());
         if (existing.isPresent()) {
-            throw new RuntimeException("You already gave feedback for this session");
+            throw ApiException.conflict("You already gave feedback for this session");
         }
         
         // Check if user attended the session
         Optional<Registration> registration = registrationRepository.findByUserIdAndSessionId(
                 currentUser.getId(), request.getSessionId());
         if (registration.isEmpty()) {
-            throw new RuntimeException("You must be registered for this session to give feedback");
+            throw ApiException.forbidden("You must be registered for this session to give feedback");
         }
         
         // Get session
         Session session = sessionRepository.findById(request.getSessionId())
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+            .orElseThrow(() -> ApiException.notFound("Session not found"));
         
         // Create feedback
         Feedback feedback = new Feedback();
@@ -83,7 +84,7 @@ public class FeedbackService {
     @Transactional
     public void deleteFeedback(Long feedbackId) {
         Feedback feedback = feedbackRepository.findById(feedbackId)
-                .orElseThrow(() -> new RuntimeException("Feedback not found"));
+            .orElseThrow(() -> ApiException.notFound("Feedback not found"));
         
         feedbackRepository.delete(feedback);
     }
@@ -92,7 +93,7 @@ public class FeedbackService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> ApiException.notFound("User not found"));
     }
     
     private FeedbackResponse mapToResponse(Feedback feedback) {

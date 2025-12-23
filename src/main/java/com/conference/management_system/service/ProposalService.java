@@ -14,6 +14,7 @@ import com.conference.management_system.dto.ProposalResponse;
 import com.conference.management_system.dto.ProposalReviewRequest;
 import com.conference.management_system.entity.Proposal;
 import com.conference.management_system.entity.User;
+import com.conference.management_system.exception.ApiException;
 import com.conference.management_system.repository.ProposalRepository;
 import com.conference.management_system.repository.UserRepository;
 
@@ -54,7 +55,12 @@ public class ProposalService {
     }
     
     public List<ProposalResponse> getProposalsByStatus(String status) {
-        Proposal.ProposalStatus proposalStatus = Proposal.ProposalStatus.valueOf(status.toUpperCase());
+        Proposal.ProposalStatus proposalStatus;
+        try {
+            proposalStatus = Proposal.ProposalStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw ApiException.badRequest("Unknown proposal status: " + status);
+        }
         return proposalRepository.findByStatus(proposalStatus).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -63,14 +69,19 @@ public class ProposalService {
     @Transactional
     public ProposalResponse reviewProposal(Long proposalId, ProposalReviewRequest request) {
         Proposal proposal = proposalRepository.findById(proposalId)
-                .orElseThrow(() -> new RuntimeException("Proposal not found"));
+                .orElseThrow(() -> ApiException.notFound("Proposal not found"));
         
         if (proposal.getStatus() != Proposal.ProposalStatus.PENDING) {
-            throw new RuntimeException("Proposal already reviewed");
+            throw ApiException.conflict("Proposal already reviewed");
         }
         
         User reviewer = getCurrentUser();
-        Proposal.ProposalStatus newStatus = Proposal.ProposalStatus.valueOf(request.getStatus().toUpperCase());
+        Proposal.ProposalStatus newStatus;
+        try {
+            newStatus = Proposal.ProposalStatus.valueOf(request.getStatus().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw ApiException.badRequest("Unknown review status: " + request.getStatus());
+        }
         
         proposal.setStatus(newStatus);
         proposal.setReviewedBy(reviewer);
@@ -88,15 +99,15 @@ public class ProposalService {
     @Transactional
     public void deleteProposal(Long proposalId) {
         Proposal proposal = proposalRepository.findById(proposalId)
-                .orElseThrow(() -> new RuntimeException("Proposal not found"));
+                .orElseThrow(() -> ApiException.notFound("Proposal not found"));
         
         User currentUser = getCurrentUser();
         if (!proposal.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You can only delete your own proposals");
+            throw ApiException.forbidden("You can only delete your own proposals");
         }
         
         if (proposal.getStatus() != Proposal.ProposalStatus.PENDING) {
-            throw new RuntimeException("Cannot delete reviewed proposal");
+            throw ApiException.conflict("Cannot delete reviewed proposal");
         }
         
         proposalRepository.delete(proposal);
@@ -106,7 +117,7 @@ public class ProposalService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> ApiException.notFound("User not found"));
     }
     
     private ProposalResponse mapToResponse(Proposal proposal) {

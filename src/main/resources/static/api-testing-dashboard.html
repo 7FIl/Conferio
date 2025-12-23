@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conference Management - API Testing Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .auth-panel {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 6px 14px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: #666;
+        }
+
+        .filter-btn:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .filter-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        /* Endpoint List */
+        .endpoint-item {
+            background: white;
+            border-radius: 8px;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+        }
+
+        .endpoint-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .endpoint-header {
+            display: flex;
+            gap: 15px;
+            padding: 16px 20px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .endpoint-header:hover {
+            background: #f9fafb;
+        }
+
+        .endpoint-left {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex: 1;
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            min-width: 50px;
+            text-align: center;
+            color: white;
+        }
+
+        .method-get {
+            background: #3b82f6;
+        }
+
+        .method-post {
+            background: #10b981;
+        }
+
+        .method-put {
+            background: #f59e0b;
+        }
+
+        .method-delete {
+            background: #ef4444;
+        }
+
+        .endpoint-path {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .endpoint-description {
+            font-size: 13px;
+            color: #666;
+            margin-left: auto;
+            margin-right: 15px;
+            min-width: 150px;
+            text-align: right;
+        }
+
+        .expand-icon {
+            color: #999;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .endpoint-item.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .endpoint-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .endpoint-item.expanded .endpoint-details {
+            max-height: 2000px;
+        }
+
+        .details-content {
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .detail-section {
+            margin-bottom: 20px;
+        }
+
+        .detail-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section-content {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+            border: 1px solid #e5e7eb;
+        }
+
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .params-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .params-table td:first-child {
+            width: 20%;
+            font-weight: 500;
+            color: #333;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .params-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .responses-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .responses-table th {
+            background: #f3f4f6;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .responses-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .responses-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .response-code {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-weight: 500;
+            color: #333;
+        }
+
+        /* Testing Section */
+        .test-section {
+            background: #f0f9ff;
+            padding: 20px;
+            border-top: 2px solid #3b82f6;
+            margin-top: 10px;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn-execute {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            flex: 1;
+            transition: background 0.2s;
+        }
+
+        .btn-execute:hover {
+            background: #2563eb;
+        }
+
+        .btn-execute:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background: white;
+            border: 1px solid #d1d5db;
+            color: #666;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-clear:hover {
+            border-color: #9ca3af;
+        }
+
+        .curl-section {
+            margin-top: 15px;
+        }
+
+        .curl-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .curl-command {
+            background: #1f2937;
+            color: #10b981;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            word-break: break-all;
+            max-height: 100px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .request-url {
+            background: #1f2937;
+            color: #60a5fa;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+
+        .request-body {
+            background: white;
+            border: 1px solid #d1d5db;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            min-height: 80px;
+            resize: vertical;
+            width: 100%;
+        }
+
+        /* Response Section */
+        .response-section {
+            margin-top: 20px;
+        }
+
+        .response-header {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .response-status {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-200 { color: #10b981; }
+        .status-201 { color: #10b981; }
+        .status-400 { color: #f59e0b; }
+        .status-401 { color: #ef4444; }
+        .status-403 { color: #ef4444; }
+        .status-500 { color: #ef4444; }
+
+        .response-body {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #333;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-input.error-input {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+        }
+
+        .form-input.error-input:focus {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 15px;
+            border-left: 3px solid #dc2626;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .endpoint-description {
+                display: none;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .test-controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">📊 API Testing Dashboard</div>
+            <div class="auth-panel">
+                <div class="user-info" id="userInfo">Not logged in</div>
+                <button class="btn btn-primary" onclick="openLoginModal()" id="loginBtn">Login</button>
+                <button class="btn btn-secondary" onclick="logout()" id="logoutBtn" style="display: none;">Logout</button>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="filterEndpoints('all')">All</button>
+            <button class="filter-btn" onclick="filterEndpoints('GET')">GET</button>
+            <button class="filter-btn" onclick="filterEndpoints('POST')">POST</button>
+            <button class="filter-btn" onclick="filterEndpoints('PUT')">PUT</button>
+            <button class="filter-btn" onclick="filterEndpoints('DELETE')">DELETE</button>
+        </div>
+
+        <!-- Endpoints List -->
+        <div id="endpointsList"></div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <div class="modal-title">Login</div>
+            <div id="modalError" class="error-message"></div>
+            <div class="form-group">
+                <label class="form-label">Username or Email</label>
+                <input type="text" class="form-input" id="loginUsername" placeholder="username or email">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-input" id="loginPassword" placeholder="password">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="login()">Login</button>
+                <button class="btn btn-secondary" style="flex: 1;" onclick="closeLoginModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.location.origin;
+        const endpoints = [
+            // Auth endpoints
+            { 
+                method: 'POST', path: '/api/auth/register', description: 'Create a new user account', 
+                params: [
+                    { name: 'username', type: 'text', required: true, example: 'john_doe', description: 'Username (3-50 chars)' },
+                    { name: 'email', type: 'email', required: true, example: 'john@example.com', description: 'Valid email address' },
+                    { name: 'password', type: 'password', required: true, example: 'SecurePass123', description: 'Password (min 6 chars)' },
+                    { name: 'fullName', type: 'text', required: true, example: 'John Doe', description: 'Full name' }
+                ],
+                auth: false, role: null 
+            },
+            { 
+                method: 'POST', path: '/api/auth/login', description: 'Authenticate user and get JWT token', 
+                params: [
+                    { name: 'username', type: 'text', required: true, example: 'john_doe or john@example.com', description: 'Username or email' },
+                    { name: 'password', type: 'password', required: true, example: 'SecurePass123', description: 'User password' }
+                ],
+                auth: false, role: null 
+            },
+            { method: 'GET', path: '/api/auth/me', description: 'Get authenticated user profile', params: [], auth: true, role: 'USER' },
+            { method: 'POST', path: '/api/auth/logout', description: 'Logout and clear token', params: [], auth: true, role: 'USER' },
+
+            // User endpoints (Admin only)
+            { method: 'GET', path: '/api/users', description: 'Get all registered users', params: [], auth: true, role: 'ADMIN' },
+            { 
+                method: 'GET', path: '/api/users/{id}', description: 'Get user by ID', 
+                params: [{ name: 'id', type: 'number', required: true, example: '1', description: 'User ID', isPath: true }],
+                auth: true, role: 'ADMIN' 
+            },
+            { 
+                method: 'PUT', path: '/api/users/{id}/role', description: 'Update user role (Admin only)', 
+                params: [
+                    { name: 'id', type: 'number', required: true, example: '1', description: 'User ID', isPath: true },
+                    { name: 'role', type: 'text', required: true, example: 'COORDINATOR', description: 'Role (ADMIN, COORDINATOR, PARTICIPANT)' }
+                ],
+                auth: true, role: 'ADMIN' 
+            },
+            { 
+                method: 'DELETE', path: '/api/users/{id}', description: 'Delete user account', 
+                params: [{ name: 'id', type: 'number', required: true, example: '1', description: 'User ID', isPath: true }],
+                auth: true, role: 'ADMIN' 
+            },
+
+            // Session endpoints
+            { method: 'GET', path: '/api/sessions', description: 'Get all conference sessions', params: [], auth: false, role: null },
+            { method: 'GET', path: '/api/sessions/upcoming', description: 'Get upcoming sessions', params: [], auth: false, role: null },
+            { 
+                method: 'GET', path: '/api/sessions/{id}', description: 'Get session details', 
+                params: [{ name: 'id', type: 'number', required: true, example: '1', description: 'Session ID', isPath: true }],
+                auth: false, role: null 
+            },
+            { method: 'GET', path: '/api/sessions/my', description: 'Get my sessions (as coordinator)', params: [], auth: true, role: 'COORDINATOR' },
+            { 
+                method: 'POST', path: '/api/sessions', description: 'Create new session (Coordinator only)', 
+                params: [
+                    { name: 'proposalId', type: 'number', required: true, example: '1', description: 'Approved proposal ID' },
+                    { name: 'room', type: 'text', required: true, example: 'Main Hall - Room A', description: 'Session room/location' },
+                    { name: 'sessionTime', type: 'datetime-local', required: true, example: '2025-01-15T14:30', description: 'Session date and time' },
+                    { name: 'durationMinutes', type: 'number', required: true, example: '90', description: 'Duration (min 15 minutes)' },
+                    { name: 'maxParticipants', type: 'number', required: false, example: '100', description: 'Max participants allowed' }
+                ],
+                auth: true, role: 'COORDINATOR' 
+            },
+            { 
+                method: 'PUT', path: '/api/sessions/{id}', description: 'Update session', 
+                params: [
+                    { name: 'id', type: 'number', required: true, example: '1', description: 'Session ID', isPath: true },
+                    { name: 'proposalId', type: 'number', required: false, example: '1', description: 'Proposal ID' },
+                    { name: 'room', type: 'text', required: false, example: 'Room B', description: 'Room/location' },
+                    { name: 'sessionTime', type: 'datetime-local', required: false, example: '2025-01-15T14:30', description: 'Session time' },
+                    { name: 'durationMinutes', type: 'number', required: false, example: '60', description: 'Duration in minutes' }
+                ],
+                auth: true, role: 'COORDINATOR' 
+            },
+            { 
+                method: 'DELETE', path: '/api/sessions/{id}', description: 'Delete session', 
+                params: [{ name: 'id', type: 'number', required: true, example: '1', description: 'Session ID', isPath: true }],
+                auth: true, role: 'COORDINATOR' 
+            },
+
+            // Proposal endpoints
+            { method: 'GET', path: '/api/proposals', description: 'Get all proposals (Coordinator/Admin only)', params: [], auth: true, role: 'COORDINATOR' },
+            { method: 'GET', path: '/api/proposals/my', description: 'Get my submitted proposals', params: [], auth: true, role: 'USER' },
+            { 
+                method: 'GET', path: '/api/proposals/status/{status}', description: 'Get proposals by status', 
+                params: [{ name: 'status', type: 'text', required: true, example: 'PENDING', description: 'Status (PENDING/ACCEPTED/REJECTED)', isPath: true }],
+                auth: true, role: 'COORDINATOR' 
+            },
+            { 
+                method: 'POST', path: '/api/proposals', description: 'Submit new proposal', 
+                params: [
+                    { name: 'title', type: 'text', required: true, example: 'AI and Machine Learning in Modern Systems', description: 'Proposal title (5-200 chars)' },
+                    { name: 'description', type: 'text', required: true, example: 'This proposal discusses latest advancements...', description: 'Detailed description (min 20 chars)' }
+                ],
+                auth: true, role: 'USER' 
+            },
+            { 
+                method: 'POST', path: '/api/proposals/{id}/review', description: 'Review proposal (Coordinator/Admin)', 
+                params: [
+                    { name: 'id', type: 'number', required: true, example: '1', description: 'Proposal ID', isPath: true },
+                    { name: 'status', type: 'text', required: true, example: 'ACCEPTED', description: 'Review status (ACCEPTED/REJECTED)' },
+                    { name: 'rejectionReason', type: 'text', required: false, example: 'Topic not relevant', description: 'Reason if rejected' }
+                ],
+                auth: true, role: 'COORDINATOR' 
+            },
+            { 
+                method: 'DELETE', path: '/api/proposals/{id}', description: 'Delete proposal', 
+                params: [{ name: 'id', type: 'number', required: true, example: '1', description: 'Proposal ID', isPath: true }],
+                auth: true, role: 'USER' 
+            },
+
+            // Feedback endpoints
+            { 
+                method: 'GET', path: '/api/feedback/session/{sessionId}', description: 'Get feedback for session', 
+                params: [{ name: 'sessionId', type: 'number', required: true, example: '1', description: 'Session ID', isPath: true }],
+                auth: false, role: null 
+            },
+            { 
+                method: 'GET', path: '/api/feedback/session/{sessionId}/average', description: 'Get average rating for session', 
+                params: [{ name: 'sessionId', type: 'number', required: true, example: '1', description: 'Session ID', isPath: true }],
+                auth: false, role: null 
+            },
+            { method: 'GET', path: '/api/feedback/my', description: 'Get my feedback submissions', params: [], auth: true, role: 'USER' },
+            { 
+                method: 'POST', path: '/api/feedback', description: 'Submit feedback for session', 
+                params: [
+                    { name: 'sessionId', type: 'number', required: true, example: '1', description: 'Session ID' },
+                    { name: 'rating', type: 'number', required: true, example: '5', description: 'Rating (1-5)' },
+                    { name: 'comment', type: 'text', required: false, example: 'Excellent presentation!', description: 'Optional feedback comment' }
+                ],
+                auth: true, role: 'USER' 
+            },
+            { 
+                method: 'DELETE', path: '/api/feedback/{id}', description: 'Delete feedback', 
+                params: [{ name: 'id', type: 'number', required: true, example: '1', description: 'Feedback ID', isPath: true }],
+                auth: true, role: 'COORDINATOR' 
+            },
+
+            // Registration endpoints
+            { method: 'GET', path: '/api/registrations/my', description: 'Get my session registrations', params: [], auth: true, role: 'USER' },
+            { 
+                method: 'GET', path: '/api/registrations/session/{sessionId}', description: 'Get session registrations (Coordinator/Admin)', 
+                params: [{ name: 'sessionId', type: 'number', required: true, example: '1', description: 'Session ID', isPath: true }],
+                auth: true, role: 'COORDINATOR' 
+            },
+            { 
+                method: 'POST', path: '/api/registrations/session/{sessionId}', description: 'Register for session', 
+                params: [{ name: 'sessionId', type: 'number', required: true, example: '1', description: 'Session ID to register for', isPath: true }],
+                auth: true, role: 'USER' 
+            },
+            { 
+                method: 'DELETE', path: '/api/registrations/{id}', description: 'Cancel session registration', 
+                params: [{ name: 'id', type: 'number', required: true, example: '1', description: 'Registration ID', isPath: true }],
+                auth: true, role: 'USER' 
+            },
+        ];
+
+        let currentFilter = 'all';
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = localStorage.getItem('currentUser');
+
+        // Clean up any legacy placeholder token value so we don't send invalid Authorization headers
+        if (authToken === 'authenticated') {
+            localStorage.removeItem('authToken');
+            authToken = null;
+        }
+
+        function getMethodBadgeClass(method) {
+            const classes = { 'GET': 'method-get', 'POST': 'method-post', 'PUT': 'method-put', 'DELETE': 'method-delete' };
+            return classes[method] || 'method-get';
+        }
+
+        function renderEndpoints() {
+            const list = document.getElementById('endpointsList');
+            list.innerHTML = '';
+
+            endpoints
+                .filter(ep => currentFilter === 'all' || ep.method === currentFilter)
+                .forEach((endpoint, filteredIdx) => {
+                    // Find the original index in the endpoints array
+                    const originalIdx = endpoints.indexOf(endpoint);
+                    const item = document.createElement('div');
+                    item.className = 'endpoint-item';
+                    
+                    const paramsHtml = endpoint.params.length > 0 ? `
+                        <div class="detail-section">
+                            <div class="section-title">Parameters</div>
+                            <div class="section-content">
+                                <table class="params-table">
+                                    ${endpoint.params.map((param, pidx) => `
+                                        <tr>
+                                            <td style="width: 25%;">
+                                                <strong>${param.name}</strong>
+                                                ${param.required ? '<span style="color: #ef4444; margin-left: 4px;">*</span>' : ''}
+                                            </td>
+                                            <td>${param.description}</td>
+                                            <td style="width: 30%;"><em style="color: #999;">ex: ${param.example}</em></td>
+                                        </tr>
+                                    `).join('')}
+                                </table>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="detail-section">
+                            <div class="section-title">Parameters</div>
+                            <div class="section-content">No parameters</div>
+                        </div>
+                    `;
+
+                    const paramsFormHtml = endpoint.params.length > 0 ? `
+                        <div class="detail-section" style="background: #f0f9ff; padding: 15px; border-radius: 6px;">
+                            <div class="section-title" style="margin-bottom: 15px;">Try it out</div>
+                            ${endpoint.params.map((param, pidx) => `
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label class="form-label">${param.name}${param.required ? '<span style="color: #ef4444;">*</span>' : ''}</label>
+                                    ${param.type === 'text' && param.name.includes('description') || param.name.includes('comment') ? `
+                                        <textarea class="form-input" id="param-${originalIdx}-${pidx}" placeholder="${param.example}" style="min-height: 60px;"></textarea>
+                                    ` : `
+                                        <input type="${param.type}" class="form-input" id="param-${originalIdx}-${pidx}" placeholder="${param.example}" value="">
+                                    `}
+                                    <small style="color: #999; margin-top: 4px; display: block;">${param.description}</small>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '';
+
+                    item.innerHTML = `
+                        <div class="endpoint-header" onclick="toggleEndpoint(this)">
+                            <div class="endpoint-left">
+                                <span class="method-badge ${getMethodBadgeClass(endpoint.method)}">${endpoint.method}</span>
+                                <span class="endpoint-path">${endpoint.path}</span>
+                            </div>
+                            <div class="endpoint-description">${endpoint.description}</div>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="endpoint-details">
+                            <div class="details-content">
+                                <div class="detail-section">
+                                    <div class="section-title">Description</div>
+                                    <div class="section-content">${endpoint.description}</div>
+                                </div>
+
+                                ${paramsHtml}
+                                ${paramsFormHtml}
+
+                                <div class="detail-section">
+                                    <div class="section-title">Authentication</div>
+                                    <div class="section-content">
+                                        ${endpoint.auth ? `<strong>Required</strong> - ${endpoint.role} role` : '<strong>Not required</strong>'}
+                                    </div>
+                                </div>
+
+                                <div class="detail-section">
+                                    <div class="section-title">Responses</div>
+                                    <div class="section-content">
+                                        <table class="responses-table">
+                                            <tr>
+                                                <th style="width: 20%;">Code</th>
+                                                <th>Description</th>
+                                            </tr>
+                                            <tr>
+                                                <td class="response-code">200</td>
+                                                <td>Success</td>
+                                            </tr>
+                                            ${endpoint.auth ? `
+                                                <tr>
+                                                    <td class="response-code">401</td>
+                                                    <td>Unauthorized - ${endpoint.role} role required</td>
+                                                </tr>
+                                            ` : ''}
+                                            <tr>
+                                                <td class="response-code">400</td>
+                                                <td>Bad Request - Invalid parameters</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="test-section">
+                                    <div class="test-controls">
+                                        <button class="btn-execute" onclick="executeRequest(${originalIdx})">Execute</button>
+                                        <button class="btn-clear" onclick="clearResponse(${originalIdx})">Clear</button>
+                                    </div>
+
+                                    <div class="curl-section">
+                                        <div class="curl-label">cURL</div>
+                                        <div class="curl-command" id="curl-${originalIdx}">curl -X ${endpoint.method} "${API_BASE_URL}${endpoint.path}"</div>
+                                    </div>
+
+                                    <div class="curl-section">
+                                        <div class="curl-label">Request URL</div>
+                                        <div class="request-url" id="request-url-${originalIdx}">${API_BASE_URL}${endpoint.path}</div>
+                                    </div>
+
+                                    <div class="response-section" id="response-section-${originalIdx}" style="display: none;">
+                                        <div class="response-header">
+                                            <span class="section-title">Server Response</span>
+                                            <span class="response-status" id="status-${originalIdx}"></span>
+                                        </div>
+                                        <div class="response-body" id="response-${originalIdx}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+        }
+
+        function toggleEndpoint(header) {
+            const item = header.parentElement;
+            item.classList.toggle('expanded');
+        }
+
+        function filterEndpoints(method) {
+            currentFilter = method;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderEndpoints();
+        }
+
+        async function executeRequest(idx) {
+            const endpoint = endpoints[idx];
+            
+            if (endpoint.auth && !authToken) {
+                alert(`⚠️ Unauthorized! This endpoint requires ${endpoint.role} role.`);
+                openLoginModal();
+                return;
+            }
+
+            const responseSection = document.getElementById(`response-section-${idx}`);
+            const responseBody = document.getElementById(`response-${idx}`);
+            const statusDisplay = document.getElementById(`status-${idx}`);
+            const curlElement = document.getElementById(`curl-${idx}`);
+            const requestUrlElement = document.getElementById(`request-url-${idx}`);
+
+            try {
+                // Collect parameter values
+                let pathParams = {};
+                let bodyParams = {};
+                let allParamsFilled = true;
+
+                endpoint.params.forEach((param, pidx) => {
+                    const inputElement = document.getElementById(`param-${idx}-${pidx}`);
+                    const value = inputElement ? inputElement.value.trim() : '';
+
+                    if (param.required && !value) {
+                        allParamsFilled = false;
+                        inputElement?.classList.add('error-input');
+                        return;
+                    }
+
+                    if (inputElement?.classList.contains('error-input')) {
+                        inputElement.classList.remove('error-input');
+                    }
+
+                    if (param.isPath) {
+                        pathParams[param.name] = value;
+                    } else if (value) {
+                        // Try to parse as number if it's a number field
+                        bodyParams[param.name] = param.type === 'number' ? parseFloat(value) : value;
+                    }
+                });
+
+                if (!allParamsFilled) {
+                    alert('⚠️ Please fill in all required fields (marked with *)');
+                    return;
+                }
+
+                // Build URL with path parameters
+                let url = endpoint.path;
+                Object.keys(pathParams).forEach(key => {
+                    url = url.replace(`{${key}}`, pathParams[key]);
+                });
+                url = API_BASE_URL + url;
+
+                // Build request
+                let options = {
+                    method: endpoint.method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+
+                if (authToken) {
+                    options.headers['Authorization'] = `Bearer ${authToken}`;
+                }
+
+                if ((endpoint.method === 'POST' || endpoint.method === 'PUT') && Object.keys(bodyParams).length > 0) {
+                    options.body = JSON.stringify(bodyParams);
+                }
+
+                // Update cURL command
+                let curlCmd = `curl -X ${endpoint.method} "${url}"`;
+                if (authToken) {
+                    curlCmd += `\n  -H "Authorization: Bearer ${authToken}"`;
+                }
+                curlCmd += `\n  -H "Content-Type: application/json"`;
+                if (options.body) {
+                    curlCmd += `\n  -d '${options.body}'`;
+                }
+                curlElement.textContent = curlCmd;
+                requestUrlElement.textContent = url;
+
+                responseBody.innerHTML = 'Loading...';
+                responseSection.style.display = 'block';
+
+                const response = await fetch(url, options);
+                const data = await response.json();
+
+                statusDisplay.textContent = response.status;
+                statusDisplay.className = `response-status status-${response.status}`;
+                responseBody.textContent = JSON.stringify(data, null, 2);
+
+                // Auto-login if this is the login endpoint and successful
+                if (endpoint.path === '/api/auth/login' && data.token) {
+                    authToken = data.token;
+                    currentUser = data.username;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('currentUser', currentUser);
+                    updateAuthUI();
+                }
+
+                // Auto-logout if this is the logout endpoint and successful
+                if (endpoint.path === '/api/auth/logout' && response.ok) {
+                    authToken = null;
+                    currentUser = null;
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                    updateAuthUI();
+                }
+            } catch (error) {
+                statusDisplay.textContent = 'Error';
+                statusDisplay.className = 'response-status status-500';
+                responseBody.textContent = `Error: ${error.message}`;
+                responseSection.style.display = 'block';
+            }
+        }
+
+        function clearResponse(idx) {
+            document.getElementById(`response-section-${idx}`).style.display = 'none';
+        }
+
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.add('active');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('active');
+            document.getElementById('modalError').style.display = 'none';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+        }
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('modalError');
+
+            if (!username || !password) {
+                errorDiv.textContent = 'Username/email and password required';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // Send/receive cookies
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    // Success - store JWT token from response
+                    authToken = data.token;
+                    currentUser = data.username || username;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('currentUser', currentUser);
+                    updateAuthUI();
+                    closeLoginModal();
+                } else {
+                    errorDiv.textContent = data.message || 'Login failed';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Error: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            updateAuthUI();
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('modalError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function updateAuthUI() {
+            const userInfo = document.getElementById('userInfo');
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+
+            if (authToken && currentUser) {
+                userInfo.textContent = `👤 ${currentUser}`;
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'block';
+            } else {
+                userInfo.textContent = 'Not logged in';
+                loginBtn.style.display = 'block';
+                logoutBtn.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderEndpoints();
+            updateAuthUI();
+        });
+
+        document.getElementById('loginModal').addEventListener('click', (e) => {
+            if (e.target.id === 'loginModal') closeLoginModal();
+        });
+    </script>
+</body>
+</html>

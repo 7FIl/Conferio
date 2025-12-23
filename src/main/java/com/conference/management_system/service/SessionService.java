@@ -1,22 +1,25 @@
 package com.conference.management_system.service;
 
-import com.conference.management_system.dto.SessionRequest;
-import com.conference.management_system.dto.SessionResponse;
-import com.conference.management_system.entity.Proposal;
-import com.conference.management_system.entity.Session;
-import com.conference.management_system.entity.User;
-import com.conference.management_system.repository.ProposalRepository;
-import com.conference.management_system.repository.SessionRepository;
-import com.conference.management_system.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.conference.management_system.dto.SessionRequest;
+import com.conference.management_system.dto.SessionResponse;
+import com.conference.management_system.entity.Proposal;
+import com.conference.management_system.entity.Session;
+import com.conference.management_system.entity.User;
+import com.conference.management_system.exception.ApiException;
+import com.conference.management_system.repository.ProposalRepository;
+import com.conference.management_system.repository.SessionRepository;
+import com.conference.management_system.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -30,10 +33,10 @@ public class SessionService {
     public SessionResponse createSession(SessionRequest request) {
         // Validate proposal exists and is accepted
         Proposal proposal = proposalRepository.findById(request.getProposalId())
-                .orElseThrow(() -> new RuntimeException("Proposal not found"));
+                .orElseThrow(() -> ApiException.notFound("Proposal not found"));
         
         if (proposal.getStatus() != Proposal.ProposalStatus.ACCEPTED) {
-            throw new RuntimeException("Only accepted proposals can be scheduled");
+            throw ApiException.badRequest("Only accepted proposals can be scheduled");
         }
         
         // Check for time conflicts
@@ -42,7 +45,7 @@ public class SessionService {
                 request.getSessionTime(), endTime);
         
         if (!conflicts.isEmpty()) {
-            throw new RuntimeException("Time slot conflicts with existing session");
+            throw ApiException.conflict("Time slot conflicts with existing session");
         }
         
         Session session = new Session();
@@ -76,7 +79,7 @@ public class SessionService {
     
     public SessionResponse getSessionById(Long id) {
         Session session = sessionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+            .orElseThrow(() -> ApiException.notFound("Session not found"));
         return mapToResponse(session);
     }
     
@@ -90,7 +93,7 @@ public class SessionService {
     @Transactional
     public SessionResponse updateSession(Long id, SessionRequest request) {
         Session session = sessionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+                .orElseThrow(() -> ApiException.notFound("Session not found"));
         
         // Check for time conflicts (excluding current session)
         LocalDateTime endTime = request.getSessionTime().plusMinutes(request.getDurationMinutes());
@@ -100,7 +103,7 @@ public class SessionService {
                 .collect(Collectors.toList());
         
         if (!conflicts.isEmpty()) {
-            throw new RuntimeException("Time slot conflicts with existing session");
+            throw ApiException.conflict("Time slot conflicts with existing session");
         }
         
         session.setSessionTime(request.getSessionTime());
@@ -118,10 +121,10 @@ public class SessionService {
     @Transactional
     public void deleteSession(Long id) {
         Session session = sessionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+                .orElseThrow(() -> ApiException.notFound("Session does not exist"));
         
         if (session.getCurrentParticipants() > 0) {
-            throw new RuntimeException("Cannot delete session with registered participants");
+            throw ApiException.conflict("Cannot delete session with registered participants");
         }
         
         sessionRepository.delete(session);
@@ -131,7 +134,7 @@ public class SessionService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> ApiException.notFound("User not found"));
     }
     
     private SessionResponse mapToResponse(Session session) {
